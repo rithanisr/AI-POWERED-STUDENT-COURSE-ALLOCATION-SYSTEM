@@ -21,6 +21,7 @@ app.use("/api/allocation", allocationRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api/students/verify-email",studentRoutes);
 
 const PORT = process.env.PORT || 5000;
 

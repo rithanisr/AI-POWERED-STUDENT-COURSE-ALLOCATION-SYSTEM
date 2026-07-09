@@ -29,6 +29,13 @@ const studentSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+      email: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      lowercase: true,
+    },
 
     marks: {
       type: Number,
@@ -36,7 +43,7 @@ const studentSchema = new mongoose.Schema(
       min: 0,
       max: 100,
     },
-
+    
     category: {
       type: String,
       enum: ["General", "OBC", "SC", "ST"],

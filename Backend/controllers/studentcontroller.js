@@ -40,11 +40,20 @@ const resolvePreferences = async (preferences = []) => {
 };
 
 export const createStudent = asyncHandler(async (req, res) => {
-  const { name, marks, category, preferences } = req.body;
+  const { name, email, marks, category, preferences } = req.body;
 
-  if (!name || !marks || !category) {
+  if (!name || !email || !marks || !category) {
     res.status(400);
-    throw new Error("Name, marks, and category are required");
+    throw new Error("Name, email, marks, and category are required");
+  }
+
+  // Server-side check for duplicate email
+  const existingStudent = await Student.findOne({ email: email.toLowerCase() });
+  if (existingStudent) {
+    return res.status(409).json({
+      success: false,
+      message: "This email has already been registered.",
+    });
   }
 
   if (marks < 0 || marks > 100) {
@@ -59,6 +68,7 @@ export const createStudent = asyncHandler(async (req, res) => {
   const studentData = {
     studentId: String(nextStudentId),
     name,
+    email: email.toLowerCase(),
     marks,
     category,
     applicationDate: new Date(),
@@ -72,6 +82,29 @@ export const createStudent = asyncHandler(async (req, res) => {
     message: "Student application submitted successfully",
     data: student,
   });
+});
+
+export const verifyEmail = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    res.status(400);
+    throw new Error("Email is required for verification.");
+  }
+
+  const student = await Student.findOne({ email: email.toLowerCase() });
+
+  if (student) {
+    return res.status(409).json({
+      success: false,
+      verified: false,
+      message: "This email has already been registered.",
+    });
+  }
+
+  res
+    .status(200)
+    .json({ success: true, verified: true, message: "Email is available." });
 });
 
 export const getStudents = asyncHandler(async (req, res) => {

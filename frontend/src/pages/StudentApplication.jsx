@@ -4,6 +4,7 @@ import {
   Alert,
   Box,
   Button,
+  Chip,
   CircularProgress,
   Container,
   MenuItem,
@@ -12,12 +13,14 @@ import {
   Stack,
   TextField,
   Typography,
+  InputAdornment,
 } from "@mui/material";
 import api from "../api/api";
 import Navbar from "../components/Navbar";
 
 const initialFormData = {
   name: "",
+  email: "",
   marks: "",
   category: "",
   applicationDate: new Date().toISOString().split("T")[0],
@@ -39,6 +42,12 @@ const StudentApplication = () => {
     open: false,
     message: "",
     severity: "success",
+  });
+  const [emailVerification, setEmailVerification] = useState({
+    verified: false,
+    verifying: false,
+    error: "",
+    success: "",
   });
 
   useEffect(() => {
@@ -87,6 +96,12 @@ const StudentApplication = () => {
       nextErrors.name = "Student name is required";
     }
 
+    if (!formData.email.trim()) {
+      nextErrors.email = "Email is required";
+    } else if (!/^\S+@\S+\.\S+$/.test(formData.email)) {
+      nextErrors.email = "Please enter a valid email address";
+    }
+
     if (formData.marks === "") {
       nextErrors.marks = "Marks are required";
     } else if (Number.isNaN(marksValue) || marksValue < 0 || marksValue > 100) {
@@ -120,7 +135,7 @@ const StudentApplication = () => {
     }
 
     setErrors(nextErrors);
-    return Object.keys(nextErrors).length === 0;
+    return Object.keys(nextErrors).length === 0 && emailVerification.verified;
   };
 
   const handleChange = (event) => {
@@ -135,6 +150,39 @@ const StudentApplication = () => {
       ...previous,
       [name]: "",
     }));
+
+    if (name === "email") {
+      setEmailVerification({
+        verified: false,
+        verifying: false,
+        error: "",
+        success: "",
+      });
+    }
+  };
+
+  const handleVerifyEmail = async () => {
+    if (!formData.email || !/^\S+@\S+\.\S+$/.test(formData.email)) {
+      setErrors((prev) => ({ ...prev, email: "Please enter a valid email." }));
+      return;
+    }
+
+    setEmailVerification({ ...emailVerification, verifying: true, error: "", success: "" });
+
+    try {
+      const response = await api.post("/students/verify-email", {
+        email: formData.email,
+      });
+      setEmailVerification({
+        verified: true,
+        verifying: false,
+        success: response.data.message,
+        error: "",
+      });
+    } catch (error) {
+      const message = error.response?.data?.message || "Verification failed.";
+      setEmailVerification({ verified: false, verifying: false, success: "", error: message });
+    }
   };
 
   const handleSubmit = async (event) => {
@@ -149,6 +197,7 @@ const StudentApplication = () => {
     try {
       await api.post("/students", {
         name: formData.name.trim(),
+        email: formData.email.toLowerCase(),
         marks: Number(formData.marks),
         category: formData.category,
         applicationDate: formData.applicationDate,
@@ -258,17 +307,56 @@ const StudentApplication = () => {
                 </Box>
 
                 <Box>
+                  <Stack direction="row" spacing={1} alignItems="flex-start">
+                    <TextField
+                      fullWidth
+                      required
+                      name="email"
+                      label="Email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      error={Boolean(errors.email) || Boolean(emailVerification.error)}
+                      helperText={errors.email || emailVerification.error}
+                      disabled={emailVerification.verifying}
+                    />
+                    <Button
+                      variant="outlined"
+                      onClick={handleVerifyEmail}
+                      disabled={!formData.email || emailVerification.verified || emailVerification.verifying || Boolean(errors.email)}
+                      sx={{ height: "56px", whiteSpace: "nowrap" }}
+                    >
+                      {emailVerification.verifying ? <CircularProgress size={24} /> : "Verify"}
+                    </Button>
+                  </Stack>
+                  {emailVerification.success && (
+                    <Typography variant="caption" color="success.main" sx={{ mt: 1, display: "block" }}>
+                      ✓ {emailVerification.success}
+                    </Typography>
+                  )}
+                </Box>
+
+                <Box>
                   <TextField
                     fullWidth
                     required
                     type="number"
                     name="marks"
-                    label="Marks"
+                    label="Percentage"
                     value={formData.marks}
                     onChange={handleChange}
                     error={Boolean(errors.marks)}
                     helperText={errors.marks}
-                    inputProps={{ min: 0, max: 100 }}
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">%</InputAdornment>
+                      ),
+                    }}
+                    inputProps={{
+                      min: 0,
+                      max: 100,
+                      step: "0.01",
+                      onWheel: (e) => e.target.blur(),
+                    }}
                   />
                 </Box>
 
@@ -346,7 +434,12 @@ const StudentApplication = () => {
                       type="submit"
                       variant="contained"
                       size="large"
-                      disabled={submitting || courses.length === 0}
+                      disabled={
+                        submitting ||
+                        courses.length === 0 ||
+                        !emailVerification.verified ||
+                        Object.values(errors).some(Boolean)
+                      }
                       sx={{ minWidth: 180 }}
                     >
                       {submitting ? (
