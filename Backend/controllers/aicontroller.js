@@ -56,15 +56,15 @@ export const askAI = async (req, res) => {
     const userQuestion = question.trim();
 
     const isAllowed = allowedQuestions.some(
-      (q) => q.toLowerCase() === userQuestion.toLowerCase()
+      (q) => q.toLowerCase() === userQuestion.toLowerCase(),
     );
 
-   if (!isAllowed) {
-  return res.status(400).json({
-    success: false,
-    message: "Please select one of the available AI questions.",
-  });
-}
+    if (!isAllowed) {
+      return res.status(400).json({
+        success: false,
+        message: "Please select one of the available AI questions.",
+      });
+    }
 
     const answer = await chatWithAI(userQuestion);
 
