@@ -34,6 +34,7 @@
 // };
 
 import { chatWithAI } from "../services/aiservice.js";
+import { GeminiServiceError } from "../utils/geminiClient.js";
 
 const allowedQuestions = [
   "How many students were allocated to each course?",
@@ -73,11 +74,16 @@ export const askAI = async (req, res) => {
       answer,
     });
   } catch (error) {
-    console.error("AI controller error:", error);
+    if (error instanceof GeminiServiceError) {
+      return res.status(error.statusCode).json({
+        success: false,
+        message: error.message,
+      });
+    }
 
     return res.status(500).json({
       success: false,
-      message: error.message || "Failed to get AI answer.",
+      message: "Failed to get AI answer.",
     });
   }
 };

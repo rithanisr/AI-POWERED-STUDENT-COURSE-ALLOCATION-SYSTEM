@@ -1,22 +1,44 @@
-import { GoogleGenAI } from "@google/genai";
 import Student from "../models/student.js";
 import Course from "../models/course.js";
 import Allocation from "../models/allocation.js";
-import dotenv from "dotenv";
-
-dotenv.config();
-
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-});
+import {
+  createGeminiClient,
+  GeminiServiceError,
+} from "../utils/geminiClient.js";
 
 const callGemini = async (prompt) => {
-  const response = await ai.models.generateContent({
-    model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
-    contents: prompt,
-  });
+  try {
+    const ai = createGeminiClient();
 
-  return response;
+    return await ai.models.generateContent({
+      model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+      contents: prompt,
+    });
+  } catch (error) {
+    if (error instanceof GeminiServiceError) {
+      throw error;
+    }
+
+    const status = Number(error?.status ?? error?.statusCode);
+    const code = typeof error?.code === "string" ? error.code : "";
+    const message = typeof error?.message === "string" ? error.message : "";
+    const isAuthenticationFailure =
+      status === 401 ||
+      code === "ACCESS_TOKEN_TYPE_UNSUPPORTED" ||
+      message.includes("ACCESS_TOKEN_TYPE_UNSUPPORTED");
+
+    console.error("Gemini API request failed", {
+      status: Number.isFinite(status) ? status : undefined,
+      category: isAuthenticationFailure ? "authentication" : "provider",
+    });
+
+    throw new GeminiServiceError(
+      isAuthenticationFailure
+        ? "Gemini authentication failed. Set GEMINI_API_KEY to a valid Gemini API key; OAuth access tokens are not accepted."
+        : "Gemini request failed. Please try again.",
+      502,
+    );
+  }
 };
 
 const buildCourseSummaries = (courses, students, allocations) => {
@@ -194,11 +216,14 @@ Rejection Rate: ${course.rejectionRate}%`
 };
 
 export const chatWithAI = async (question) => {
-  try {
-    if (!question || typeof question !== "string") {
-      throw new Error("Question must be a non-empty string");
-    }
+  if (!question || typeof question !== "string") {
+    throw new GeminiServiceError(
+      "Question must be a non-empty string.",
+      400,
+    );
+  }
 
+  try {
     const [students, courses, allocations] = await Promise.all([
       Student.find().lean(),
       Course.find().lean(),
@@ -240,10 +265,14 @@ export const chatWithAI = async (question) => {
 
     return answer;
   } catch (error) {
-    console.error("Gemini Error:", error);
+    if (error instanceof GeminiServiceError) {
+      throw error;
+    }
 
-    throw new Error(
-      `AI service failed: ${error.message}`
+    console.error("AI service failed", { category: "internal" });
+    throw new GeminiServiceError(
+      "AI service failed. Please try again.",
+      500,
     );
   }
 };
