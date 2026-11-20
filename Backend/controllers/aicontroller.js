@@ -36,13 +36,6 @@
 import { chatWithAI } from "../services/aiservice.js";
 import { GeminiServiceError } from "../utils/geminiClient.js";
 
-const allowedQuestions = [
-  "How many students were allocated to each course?",
-  "Which students did not receive their first preference?",
-  "Which course had the highest rejection rate?",
-  "Show category-wise allocation summary.",
-];
-
 export const askAI = async (req, res) => {
   try {
     const { question } = req.body;
@@ -54,20 +47,7 @@ export const askAI = async (req, res) => {
       });
     }
 
-    const userQuestion = question.trim();
-
-    const isAllowed = allowedQuestions.some(
-      (q) => q.toLowerCase() === userQuestion.toLowerCase(),
-    );
-
-    if (!isAllowed) {
-      return res.status(400).json({
-        success: false,
-        message: "Please select one of the available AI questions.",
-      });
-    }
-
-    const answer = await chatWithAI(userQuestion);
+    const answer = await chatWithAI(question.trim());
 
     return res.status(200).json({
       success: true,

@@ -165,9 +165,9 @@ const buildPrompt = ({
   notFirstPreferenceStudents,
 }) => {
   const promptParts = [
-    "You are a university data assistant.",
-    "Answer ONLY using the information below.",
-    "Do not make up any information.",
+    "You are the assistant for the Student Course Allocation System.",
+    "Answer any natural-language question related to the system using the information below; the question does not need to match a predefined list.",
+    "Do not invent data, system features, or allocation rules that are not provided.",
     `Question: ${question}`,
   ];
 
@@ -208,8 +208,8 @@ Rejection Rate: ${course.rejectionRate}%`
   }
 
   promptParts.push(
-    "If the answer cannot be determined from the above information, reply:",
-    "'I can only answer based on the provided allocation data.'"
+    "If the question is unrelated to the Student Course Allocation System, explain that you can only help with this system.",
+    "If the question is related to the system but cannot be answered from the available information, say what information is missing instead of guessing."
   );
 
   return promptParts.join("\n\n");
